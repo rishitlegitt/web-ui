@@ -28,7 +28,21 @@ def default_config():
         "save_recording_path": "./tmp/record_videos",
         "save_trace_path": "./tmp/traces",
         "save_agent_history_path": "./tmp/agent_history",
-        "task": "go to google.com and type 'OpenAI' click search and give me the first url",
+        "task": """Access Legitt AI Website
+
+If logged out, log in using the following credentials:
+Email ID: 
+Password:
+2️ Retrieve and Compile Data (Step-by-Step):
+
+User Profile Details: Gather all generic information related to the user.
+Document List: Extract the full names of every document associated with the user ID.
+User Reports: Locate and compile all reports linked to the user ID.
+3️ Final Output:
+
+Provide a comprehensive, well-structured, and 100% accurate report summarizing all findings.
+Ensure deep research and verification of all extracted data.
+Maintain clarity, accuracy, and completeness in the final report.""",
     }
 
 
