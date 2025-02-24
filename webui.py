@@ -1,6 +1,5 @@
 import pdb
 import logging
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,7 +23,7 @@ from browser_use.browser.context import (
 from langchain_ollama import ChatOllama
 from playwright.async_api import async_playwright
 from src.utils.agent_state import AgentState
-
+from google import genai
 from src.utils import utils
 from src.agent.custom_agent import CustomAgent
 from src.browser.custom_browser import CustomBrowser
@@ -43,31 +42,23 @@ _global_agent = None
 
 # Create the global agent state instance
 _global_agent_state = AgentState()
+GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-def resolve_sensitive_env_variables(text):
-    """
-    Replace environment variable placeholders ($SENSITIVE_*) with their values.
-    Only replaces variables that start with SENSITIVE_.
-    """
-    if not text:
-        return text
-        
-    import re
-    
-    # Find all $SENSITIVE_* patterns
-    env_vars = re.findall(r'\$SENSITIVE_[A-Za-z0-9_]*', text)
-    
-    result = text
-    for var in env_vars:
-        # Remove the $ prefix to get the actual environment variable name
-        env_name = var[1:]  # removes the $
-        env_value = os.getenv(env_name)
-        if env_value is not None:
-            # Replace $SENSITIVE_VAR_NAME with its value
-            result = result.replace(var, env_value)
-        
-    return result
+def gemini_ai_chat_completions(chatPayload):
 
+    api_key = chatPayload.get("api_key", GEMINI_API_KEY)
+    model = chatPayload.get("model","gemini-2.0-flash")
+    messages = chatPayload.get("messages")
+    temperature = chatPayload.get("temperature",0)
+
+    
+    client = genai.Client(api_key=api_key)
+    completion =client.models.generate_content(
+            model=model,
+            contents=messages,
+            config={"temperature": temperature}
+        )
+    return (completion.text)
 async def stop_agent():
     """Request the agent to stop and update UI with enhanced feedback"""
     global _global_agent_state, _global_browser_context, _global_browser, _global_agent
@@ -143,7 +134,7 @@ async def run_browser_agent(
         max_steps,
         use_vision,
         max_actions_per_step,
-        tool_calling_method
+        tool_calling_method,
 ):
     global _global_agent_state
     _global_agent_state.clear_stop()  # Clear any previous stop requests
@@ -164,8 +155,6 @@ async def run_browser_agent(
                 glob.glob(os.path.join(save_recording_path, "*.[mM][pP]4"))
                 + glob.glob(os.path.join(save_recording_path, "*.[wW][eE][bB][mM]"))
             )
-
-        task = resolve_sensitive_env_variables(task)
 
         # Run the agent
         llm = utils.get_llm_model(
@@ -216,6 +205,16 @@ async def run_browser_agent(
         else:
             raise ValueError(f"Invalid agent type: {agent_type}")
 
+        # Process the webpage data to find relevant information based on the task description
+        chatPayload = {
+            "messages": f"""You have been provided a detail from Webpages, Your task is to Find the relevant information asked by the user from the Webpage data
+
+Webpage data: {model_actions}{final_result}{model_thoughts}
+
+What user wants to Find: {task}"""
+        }
+        relevant_info = gemini_ai_chat_completions(chatPayload)  # Assuming this function processes the data and returns the relevant info
+
         # Get the list of videos after the agent runs (if recording is enabled)
         latest_video = None
         if save_recording_path:
@@ -234,6 +233,7 @@ async def run_browser_agent(
             latest_video,
             trace_file,
             history_file,
+            relevant_info,  # Return the relevant information found
             gr.update(value="Stop", interactive=True),  # Re-enable stop button
             gr.update(interactive=True)    # Re-enable run button
         )
@@ -253,6 +253,7 @@ async def run_browser_agent(
             None,                                       # latest_video
             None,                                       # history_file
             None,                                       # trace_file
+            None,                                       # relevant_info
             gr.update(value="Stop", interactive=True),  # Re-enable stop button
             gr.update(interactive=True)    # Re-enable run button
         )
@@ -482,11 +483,11 @@ async def run_with_stream(
     max_steps,
     use_vision,
     max_actions_per_step,
-    tool_calling_method
+    tool_calling_method,
 ):
     global _global_agent_state
-    stream_vw = 80
-    stream_vh = int(80 * window_h // window_w)
+    stream_vw = 10
+    stream_vh = int(10 * window_h // window_w)
     if not headless:
         result = await run_browser_agent(
             agent_type=agent_type,
@@ -511,7 +512,7 @@ async def run_with_stream(
             max_steps=max_steps,
             use_vision=use_vision,
             max_actions_per_step=max_actions_per_step,
-            tool_calling_method=tool_calling_method
+            tool_calling_method=tool_calling_method,
         )
         # Add HTML content at the start of the result array
         html_content = f"<h1 style='width:{stream_vw}vw; height:{stream_vh}vh'>Using browser...</h1>"
@@ -544,7 +545,7 @@ async def run_with_stream(
                     max_steps=max_steps,
                     use_vision=use_vision,
                     max_actions_per_step=max_actions_per_step,
-                    tool_calling_method=tool_calling_method
+                    tool_calling_method=tool_calling_method,
                 )
             )
 
@@ -552,7 +553,7 @@ async def run_with_stream(
             html_content = f"<h1 style='width:{stream_vw}vw; height:{stream_vh}vh'>Using browser...</h1>"
             final_result = errors = model_actions = model_thoughts = ""
             latest_videos = trace = history_file = None
-
+            relevant_info = ""  # Initialize relevant_info
 
             # Periodically update the stream while the agent task is running
             while not agent_task.done():
@@ -575,6 +576,7 @@ async def run_with_stream(
                         latest_videos,
                         trace,
                         history_file,
+                        relevant_info,  # Include relevant_info
                         gr.update(value="Stopping...", interactive=False),  # stop_button
                         gr.update(interactive=False),  # run_button
                     ]
@@ -589,6 +591,7 @@ async def run_with_stream(
                         latest_videos,
                         trace,
                         history_file,
+                        relevant_info,  # Include relevant_info
                         gr.update(value="Stop", interactive=True),  # Re-enable stop button
                         gr.update(interactive=True)  # Re-enable run button
                     ]
@@ -597,12 +600,13 @@ async def run_with_stream(
             # Once the agent task completes, get the results
             try:
                 result = await agent_task
-                final_result, errors, model_actions, model_thoughts, latest_videos, trace, history_file, stop_button, run_button = result
+                final_result, errors, model_actions, model_thoughts, latest_videos, trace, history_file, relevant_info, stop_button, run_button = result
             except gr.Error:
                 final_result = ""
                 model_actions = ""
                 model_thoughts = ""
                 latest_videos = trace = history_file = None
+                relevant_info = ""  # Initialize relevant_info
 
             except Exception as e:
                 errors = f"Agent error: {str(e)}"
@@ -616,6 +620,7 @@ async def run_with_stream(
                 latest_videos,
                 trace,
                 history_file,
+                relevant_info,  # Include relevant_info
                 stop_button,
                 run_button
             ]
@@ -631,6 +636,7 @@ async def run_with_stream(
                 None,
                 None,
                 None,
+                "",  # Include relevant_info
                 gr.update(value="Stop", interactive=True),  # Re-enable stop button
                 gr.update(interactive=True)    # Re-enable run button
             ]
@@ -766,7 +772,7 @@ def create_ui(config, theme_name="Ocean"):
                     )
                     llm_model_name = gr.Dropdown(
                         label="Model Name",
-                        choices=utils.model_names['openai'],
+                        choices=utils.model_names['google'],
                         value=config['llm_model_name'],
                         interactive=True,
                         allow_custom_value=True,  # Allow users to input custom model names
@@ -902,7 +908,12 @@ def create_ui(config, theme_name="Ocean"):
                         value="<h1 style='width:80vw; height:50vh'>Waiting for browser session...</h1>",
                         label="Live Browser View",
                 )
-            
+
+                # Add the relevant_info output to the "Run Agent" tab
+                relevant_info_output = gr.Textbox(
+                    label="Relevant Information", lines=3, show_label=True
+                )
+
             with gr.TabItem("🧐 Deep Research", id=5):
                 research_task_input = gr.Textbox(label="Research Task", lines=5, value="Compose a report on the use of Reinforcement Learning for training Large Language Models, encompassing its origins, current advancements, and future prospects, substantiated with examples of relevant models and techniques. The report should reflect original insights and analysis, moving beyond mere summarization of existing literature.")
                 with gr.Row():
@@ -954,12 +965,12 @@ def create_ui(config, theme_name="Ocean"):
                 # Run button click handler
                 run_button.click(
                     fn=run_with_stream,
-                        inputs=[
-                            agent_type, llm_provider, llm_model_name, llm_num_ctx, llm_temperature, llm_base_url, llm_api_key,
-                            use_own_browser, keep_browser_open, headless, disable_security, window_w, window_h,
-                            save_recording_path, save_agent_history_path, save_trace_path,  # Include the new path
-                            enable_recording, task, add_infos, max_steps, use_vision, max_actions_per_step, tool_calling_method
-                        ],
+                    inputs=[
+                        agent_type, llm_provider, llm_model_name, llm_num_ctx, llm_temperature, llm_base_url, llm_api_key,
+                        use_own_browser, keep_browser_open, headless, disable_security, window_w, window_h,
+                        save_recording_path, save_agent_history_path, save_trace_path,  # Include the new path
+                        enable_recording, task, add_infos, max_steps, use_vision, max_actions_per_step, tool_calling_method,
+                    ],
                     outputs=[
                         browser_view,           # Browser view
                         final_result_output,    # Final result
@@ -969,6 +980,7 @@ def create_ui(config, theme_name="Ocean"):
                         recording_display,      # Latest recording
                         trace_file,             # Trace file
                         agent_history_file,     # Agent history file
+                        relevant_info_output,   # Relevant information (now in "Run Agent" tab)
                         stop_button,            # Stop button
                         run_button              # Run button
                     ],

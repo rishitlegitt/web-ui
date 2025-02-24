@@ -8,14 +8,14 @@ def default_config():
     """Prepare the default configuration"""
     return {
         "agent_type": "custom",
-        "max_steps": 100,
-        "max_actions_per_step": 10,
+        "max_steps": 50,
+        "max_actions_per_step": 7,
         "use_vision": True,
         "tool_calling_method": "auto",
-        "llm_provider": "openai",
-        "llm_model_name": "gpt-4o",
+        "llm_provider": "google",
+        "llm_model_name": "gemini-2.0-flash-exp",
         "llm_num_ctx": 32000,
-        "llm_temperature": 1.0,
+        "llm_temperature": 0,
         "llm_base_url": "",
         "llm_api_key": "",
         "use_own_browser": os.getenv("CHROME_PERSISTENT_SESSION", "false").lower() == "true",
@@ -30,7 +30,7 @@ def default_config():
         "save_agent_history_path": "./tmp/agent_history",
         "task": """Access Legitt AI Website
 
-If logged out, log in using the following credentials:
+If logged out, log in using google:
 Email ID: 
 Password:
 2️ Retrieve and Compile Data (Step-by-Step):
@@ -40,9 +40,9 @@ Document List: Extract the full names of every document associated with the user
 User Reports: Locate and compile all reports linked to the user ID.
 3️ Final Output:
 
-Provide a comprehensive, well-structured, and 100% accurate report summarizing all findings.
+Provide a comprehensive, well-structured, and 100% accurate report in JSON.
 Ensure deep research and verification of all extracted data.
-Maintain clarity, accuracy, and completeness in the final report.""",
+""",
     }
 
 

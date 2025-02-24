@@ -355,22 +355,17 @@ def main(main_prompt,helper_prompt,find_prompt):
 if __name__ == '__main__':
     main_prompt="""Access Legitt AI Website
 
-If logged out, log in using the following credentials:
-Email ID: rishit.dass@legittai.com
-Password:
-2️ Retrieve and Compile Data (Step-by-Step):
+If logged out, log in using the Google Loggin with email :
+Go to repository and get me all the documents That are present, Make sure you are 100% correct, And retrieve name of every document
 
-User Profile Details: Gather all generic information related to the user.
-Document List: Extract the full names of every document associated with the user ID.
-User Reports: Locate and compile all reports linked to the user ID.
-3️ Final Output:
+Provide a comprehensive, well-structured, Json with having all the document names present.
 
-Provide a comprehensive, well-structured, and 100% accurate report summarizing all findings.
-Ensure deep research and verification of all extracted data.
-Maintain clarity, accuracy, and completeness in the final report.
 """
     helper_prompt=""
-    find_prompt="""    1. Find the Generic Details about the User
-    2. Find all the documents present on user's Id
-    3. Find the reports of user id"""
+    find_prompt="""   Access Legitt AI Website
+
+If logged out, log in using the Google Loggin with email :
+Go to repository and get me all the documents That are present, Make sure you are 100% correct, And retrieve name of every document
+
+Provide a comprehensive, well-structured, and 100% accurate report summarizing all findings. """
     main(main_prompt,helper_prompt,find_prompt)
