@@ -47,7 +47,7 @@ GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
 def gemini_ai_chat_completions(chatPayload):
 
     api_key = chatPayload.get("api_key", GEMINI_API_KEY)
-    model = chatPayload.get("model","gemini-2.0-flash")
+    model = chatPayload.get("model","gemini-2.0-flash-thinking-exp")
     messages = chatPayload.get("messages")
     temperature = chatPayload.get("temperature",0)
 
@@ -138,7 +138,7 @@ async def run_browser_agent(
 ):
     global _global_agent_state
     _global_agent_state.clear_stop()  # Clear any previous stop requests
-
+    
     try:
         # Disable recording if the checkbox is unchecked
         if not enable_recording:

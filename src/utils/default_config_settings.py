@@ -13,7 +13,7 @@ def default_config():
         "use_vision": True,
         "tool_calling_method": "auto",
         "llm_provider": "google",
-        "llm_model_name": "gemini-2.0-flash-exp",
+        "llm_model_name": "gemini-2.0-flash-thinking-exp",
         "llm_num_ctx": 32000,
         "llm_temperature": 0,
         "llm_base_url": "",
